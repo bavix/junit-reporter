@@ -70,7 +70,7 @@ func main() {
 		}
 
 		// Add all regular files that end with ".xml"
-		if info.Mode().IsRegular() && strings.HasSuffix(info.Name(), ".xml") {
+		if info.Mode().IsRegular() && strings.HasSuffix(info.Name(), ".xml") && strings.HasPrefix(info.Name(), "junit-") {
 			filenames = append(filenames, path)
 		}
 
