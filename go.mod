@@ -1,4 +1,4 @@
-module github.com/bavix/go-junit
+module github.com/bavix/junit-reporter
 
 go 1.17
 
