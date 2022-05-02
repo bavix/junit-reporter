@@ -4,13 +4,14 @@ import (
 	"flag"
 	"github.com/joshdk/go-junit"
 	"github.com/olekukonko/tablewriter"
+	"io/ioutil"
+	"path"
 	"regexp"
 	"sort"
 	"time"
 
 	"log"
 	"os"
-	"path/filepath"
 	"strings"
 )
 
@@ -68,25 +69,19 @@ func main() {
 
 	var filenames []string
 
-	err := filepath.Walk(*directory, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
+	files, err := ioutil.ReadDir(*directory)
+	if err != nil {
+		log.Fatalln(err)
+	}
 
-		// Add all regular files that end with ".xml"
+	for _, info := range files {
 		if info.Mode().IsRegular() && strings.HasSuffix(info.Name(), ".xml") && strings.HasPrefix(info.Name(), "junit-") {
-			filenames = append(filenames, path)
+			filenames = append(filenames, path.Join(*directory, info.Name()))
 		}
-
-		return nil
-	})
+	}
 
 	if len(filenames) == 0 {
 		log.Fatalln("Files not found")
-	}
-
-	if err != nil {
-		log.Fatalln(err)
 	}
 
 	units := map[string]*Unit{}
