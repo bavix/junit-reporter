@@ -5,6 +5,7 @@ import (
 	"github.com/joshdk/go-junit"
 	"github.com/olekukonko/tablewriter"
 	"regexp"
+	"sort"
 	"time"
 
 	"log"
@@ -25,7 +26,7 @@ type UTest struct {
 }
 
 func (u *Unit) FullName() string {
-	return u.Class + "::" + u.Method
+	return strings.TrimSuffix(u.Class, "Test") + ":" + strings.TrimPrefix(u.Method, "test")
 }
 
 func (u *Unit) Push(version string, t junit.Test) {
@@ -61,6 +62,7 @@ func depthSuite(suite junit.Suite) []junit.Test {
 }
 
 func main() {
+	rotate := flag.Bool("rotate", false, "Swap versions and names")
 	directory := flag.String("path", "./build", "Specify folder path")
 	flag.Parse()
 
@@ -114,21 +116,48 @@ func main() {
 	}
 
 	var columns []string
-	columns = append(columns, "Name")
-	columns = append(columns, versions...)
+	var unitList []string
+	for _, unit := range units {
+		unitList = append(unitList, unit.FullName())
+	}
+
+	sort.Slice(unitList, func(i, j int) bool {
+		return unitList[i] < unitList[j]
+	})
 
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader(columns)
 
-	for _, unit := range units {
-		var values []string
-		values = append(values, unit.FullName())
+	if *rotate {
+		columns = append(columns, "Version")
+		columns = append(columns, unitList...)
+
 		for _, version := range versions {
-			values = append(values, unit.GetDuration(version).String())
-		}
+			var values []string
+			values = append(values, version)
+			for _, unitKey := range unitList {
+				unit := units[unitKey]
+				values = append(values, unit.GetDuration(version).String())
+			}
 
-		table.Append(values)
+			table.Append(values)
+		}
+	} else {
+		columns = append(columns, "Name")
+		columns = append(columns, versions...)
+
+		for _, unitKey := range unitList {
+			unit := units[unitKey]
+			var values []string
+			values = append(values, unit.FullName())
+			for _, version := range versions {
+				values = append(values, unit.GetDuration(version).String())
+			}
+
+			table.Append(values)
+		}
 	}
+
+	table.SetHeader(columns)
 
 	table.Render()
 }
