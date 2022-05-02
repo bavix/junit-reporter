@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/fatih/color"
+	"flag"
 	"github.com/joshdk/go-junit"
-	"github.com/rodaine/table"
+	"github.com/olekukonko/tablewriter"
 	"regexp"
 	"time"
 
@@ -61,10 +61,12 @@ func depthSuite(suite junit.Suite) []junit.Test {
 }
 
 func main() {
-	directory := "./build"
+	directory := flag.String("path", "./build", "Specify folder path")
+	flag.Parse()
+
 	var filenames []string
 
-	err := filepath.Walk(directory, func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(*directory, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -77,12 +79,16 @@ func main() {
 		return nil
 	})
 
+	if len(filenames) == 0 {
+		log.Fatalln("Files not found")
+	}
+
 	if err != nil {
 		log.Fatalln(err)
 	}
 
 	units := map[string]*Unit{}
-	var versions []interface{}
+	var versions []string
 
 	for _, path := range filenames {
 		ingestFile, err := junit.IngestFile(path)
@@ -107,27 +113,22 @@ func main() {
 		}
 	}
 
-	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
-	columnFmt := color.New(color.FgYellow).SprintfFunc()
-
-	var columns []interface{}
+	var columns []string
 	columns = append(columns, "Name")
 	columns = append(columns, versions...)
 
-	tbl := table.New(columns...)
-	tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader(columns)
 
 	for _, unit := range units {
-		var values []interface{}
+		var values []string
 		values = append(values, unit.FullName())
-		for _, ver := range versions {
-			if version, ok := ver.(string); ok {
-				values = append(values, unit.GetDuration(version))
-			}
+		for _, version := range versions {
+			values = append(values, unit.GetDuration(version).String())
 		}
 
-		tbl.AddRow(values...)
+		table.Append(values)
 	}
 
-	tbl.Print()
+	table.Render()
 }
