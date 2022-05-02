@@ -90,8 +90,8 @@ func main() {
 			log.Fatalf("failed to ingest JUnit xml %v", err)
 		}
 
-		re, _ := regexp.Compile(`\d+\.\d+(\.\d+[^.]*)?`)
-		version := string(re.Find([]byte(path)))
+		re := regexp.MustCompile(`junit-(.+).xml`)
+		version := re.FindStringSubmatch(path)[1]
 		versions = append(versions, version)
 
 		for _, suite := range ingestFile {
