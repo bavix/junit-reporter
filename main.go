@@ -63,6 +63,7 @@ func depthSuite(suite junit.Suite) []junit.Test {
 }
 
 func main() {
+	group := flag.Bool("group", false, "Groups by version")
 	rotate := flag.Bool("rotate", false, "Swap versions and names")
 	directory := flag.String("path", "./build", "Specify folder path")
 	flag.Parse()
@@ -85,6 +86,7 @@ func main() {
 	}
 
 	units := map[string]*Unit{}
+	verKeys := map[string]bool{}
 	var versions []string
 
 	for _, _path := range filenames {
@@ -93,9 +95,20 @@ func main() {
 			log.Fatalf("failed to ingest JUnit xml %v", err)
 		}
 
-		re := regexp.MustCompile(`junit-(.+).xml`)
-		version := re.FindStringSubmatch(_path)[1]
-		versions = append(versions, version)
+		var version string
+
+		if *group {
+			re, _ := regexp.Compile(`\d+\.\d+(\.\d+)?`)
+			version = string(re.Find([]byte(_path)))
+		} else {
+			re := regexp.MustCompile(`junit-(.+).xml`)
+			version = re.FindStringSubmatch(_path)[1]
+		}
+
+		if _, ok := verKeys[version]; !ok {
+			versions = append(versions, version)
+			verKeys[version] = true
+		}
 
 		for _, suite := range ingestFile {
 			for _, test := range depthSuite(suite) {
@@ -153,6 +166,8 @@ func main() {
 	}
 
 	table.SetBorders(tablewriter.Border{Left: true, Top: false, Right: true, Bottom: false})
+	table.SetAutoFormatHeaders(false)
+	table.SetAutoWrapText(false)
 	table.SetCenterSeparator("|")
 	table.SetHeader(columns)
 
