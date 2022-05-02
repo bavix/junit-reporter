@@ -87,14 +87,14 @@ func main() {
 	units := map[string]*Unit{}
 	var versions []string
 
-	for _, path := range filenames {
-		ingestFile, err := junit.IngestFile(path)
+	for _, _path := range filenames {
+		ingestFile, err := junit.IngestFile(_path)
 		if err != nil {
 			log.Fatalf("failed to ingest JUnit xml %v", err)
 		}
 
 		re := regexp.MustCompile(`junit-(.+).xml`)
-		version := re.FindStringSubmatch(path)[1]
+		version := re.FindStringSubmatch(_path)[1]
 		versions = append(versions, version)
 
 		for _, suite := range ingestFile {
