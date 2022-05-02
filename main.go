@@ -98,7 +98,7 @@ func main() {
 		var version string
 
 		if *group {
-			re, _ := regexp.Compile(`\d+\.\d+(\.\d+)?`)
+			re, _ := regexp.Compile(`\d+\.((\d+|x)(\.(\d+|x))?)`)
 			version = string(re.Find([]byte(_path)))
 		} else {
 			re := regexp.MustCompile(`junit-(.+).xml`)
