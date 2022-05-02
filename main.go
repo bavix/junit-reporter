@@ -34,12 +34,18 @@ func (u *Unit) Push(version string, t junit.Test) {
 	u.t = append(u.t, UTest{Version: version, JUnit: t})
 }
 
-func (u *Unit) GetDuration(version string) time.Duration {
+func (u *Unit) GetDuration(version string, ticks *bool) time.Duration {
 	d := time.Duration(0)
+	var i int64 = 0
 	for _, c := range u.t {
 		if c.Version == version {
 			d = d + c.JUnit.Duration
+			i++
 		}
+	}
+
+	if *ticks && i > 0 {
+		return time.Duration(int64(d) / i)
 	}
 
 	return d
@@ -63,6 +69,7 @@ func depthSuite(suite junit.Suite) []junit.Test {
 }
 
 func main() {
+	ticks := flag.Bool("ticks", false, "Time per ticks")
 	group := flag.Bool("group", false, "Groups by version")
 	rotate := flag.Bool("rotate", false, "Swap versions and names")
 	directory := flag.String("path", "./build", "Specify folder path")
@@ -144,7 +151,7 @@ func main() {
 			values = append(values, version)
 			for _, unitKey := range unitList {
 				unit := units[unitKey]
-				values = append(values, unit.GetDuration(version).String())
+				values = append(values, unit.GetDuration(version, ticks).String())
 			}
 
 			table.Append(values)
@@ -158,7 +165,7 @@ func main() {
 			var values []string
 			values = append(values, unit.FullName())
 			for _, version := range versions {
-				values = append(values, unit.GetDuration(version).String())
+				values = append(values, unit.GetDuration(version, ticks).String())
 			}
 
 			table.Append(values)
