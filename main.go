@@ -157,6 +157,8 @@ func main() {
 		}
 	}
 
+	table.SetBorders(tablewriter.Border{Left: true, Top: false, Right: true, Bottom: false})
+	table.SetCenterSeparator("|")
 	table.SetHeader(columns)
 
 	table.Render()
