@@ -1,10 +1,10 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"github.com/joshdk/go-junit"
 	"github.com/olekukonko/tablewriter"
-	"io/ioutil"
 	"path"
 	"regexp"
 	"sort"
@@ -34,21 +34,25 @@ func (u *Unit) Push(version string, t junit.Test) {
 	u.t = append(u.t, UTest{Version: version, JUnit: t})
 }
 
-func (u *Unit) GetDuration(version string, ticks *bool) time.Duration {
+func (u *Unit) GetDuration(version string, ticks *bool) (time.Duration, error) {
 	d := time.Duration(0)
 	var i int64 = 0
 	for _, c := range u.t {
 		if c.Version == version {
+			if c.JUnit.Status != "passed" {
+				return 0, errors.New("-")
+			}
+
 			d = d + c.JUnit.Duration
 			i++
 		}
 	}
 
 	if *ticks && i > 0 {
-		return time.Duration(int64(d) / i)
+		return time.Duration(int64(d) / i), nil
 	}
 
-	return d
+	return d, nil
 }
 
 func NewUnit(version string, t junit.Test) Unit {
@@ -77,13 +81,13 @@ func main() {
 
 	var filenames []string
 
-	files, err := ioutil.ReadDir(*directory)
+	files, err := os.ReadDir(*directory)
 	if err != nil {
 		log.Fatalln(err)
 	}
 
 	for _, info := range files {
-		if info.Mode().IsRegular() && strings.HasSuffix(info.Name(), ".xml") && strings.HasPrefix(info.Name(), "junit-") {
+		if info.Type().IsRegular() && strings.HasSuffix(info.Name(), ".xml") && strings.HasPrefix(info.Name(), "junit-") {
 			filenames = append(filenames, path.Join(*directory, info.Name()))
 		}
 	}
@@ -151,7 +155,11 @@ func main() {
 			values = append(values, version)
 			for _, unitKey := range unitList {
 				unit := units[unitKey]
-				values = append(values, unit.GetDuration(version, ticks).String())
+				if dur, err := unit.GetDuration(version, ticks); err != nil {
+					values = append(values, err.Error())
+				} else {
+					values = append(values, dur.String())
+				}
 			}
 
 			table.Append(values)
@@ -165,7 +173,11 @@ func main() {
 			var values []string
 			values = append(values, unit.FullName())
 			for _, version := range versions {
-				values = append(values, unit.GetDuration(version, ticks).String())
+				if dur, err := unit.GetDuration(version, ticks); err != nil {
+					values = append(values, err.Error())
+				} else {
+					values = append(values, dur.String())
+				}
 			}
 
 			table.Append(values)
