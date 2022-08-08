@@ -34,6 +34,15 @@ func (u *Unit) Push(version string, t junit.Test) {
 	u.t = append(u.t, UTest{Version: version, JUnit: t})
 }
 
+func formatDuration(d time.Duration) string {
+	scale := 100 * time.Second
+	for scale > d {
+		scale = scale / 10
+	}
+
+	return d.Round(scale / 100).String()
+}
+
 func (u *Unit) GetDuration(version string, ticks *bool) (time.Duration, error) {
 	d := time.Duration(0)
 	var i int64 = 0
@@ -158,7 +167,7 @@ func main() {
 				if dur, err := unit.GetDuration(version, ticks); err != nil {
 					values = append(values, err.Error())
 				} else {
-					values = append(values, dur.String())
+					values = append(values, formatDuration(dur))
 				}
 			}
 
@@ -176,7 +185,7 @@ func main() {
 				if dur, err := unit.GetDuration(version, ticks); err != nil {
 					values = append(values, err.Error())
 				} else {
-					values = append(values, dur.String())
+					values = append(values, formatDuration(dur))
 				}
 			}
 
