@@ -84,6 +84,7 @@ func depthSuite(suite junit.Suite) []junit.Test {
 func main() {
 	ticks := flag.Bool("ticks", false, "Time per ticks")
 	group := flag.Bool("group", false, "Groups by version")
+	major := flag.Bool("major", false, "Can only be used with a group")
 	rotate := flag.Bool("rotate", false, "Swap versions and names")
 	directory := flag.String("path", "./build", "Specify folder path")
 	flag.Parse()
@@ -120,6 +121,9 @@ func main() {
 		if *group {
 			re, _ := regexp.Compile(`\d+\.((\d+|x)(\.(\d+|x))?)`)
 			version = string(re.Find([]byte(_path)))
+			if *major {
+				version = string(version[0]) + ".x"
+			}
 		} else {
 			re := regexp.MustCompile(`junit-(.+).xml`)
 			version = re.FindStringSubmatch(_path)[1]
