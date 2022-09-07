@@ -68,7 +68,7 @@ func (u *Unit) getDurationMedian(input []time.Duration) time.Duration {
 		return 0
 	}
 
-	return time.Duration(int64(median) / int64(len(input)))
+	return time.Duration(int64(median))
 }
 
 func (u *Unit) GetDuration(version string, ticks *bool, median *bool) (time.Duration, error) {
