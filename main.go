@@ -4,6 +4,7 @@ import (
 	"errors"
 	"flag"
 	"github.com/joshdk/go-junit"
+	"github.com/montanaflynn/stats"
 	"github.com/olekukonko/tablewriter"
 	"path"
 	"regexp"
@@ -43,25 +44,58 @@ func formatDuration(d time.Duration) string {
 	return d.Round(scale / 100).String()
 }
 
-func (u *Unit) GetDuration(version string, ticks *bool) (time.Duration, error) {
+func (u *Unit) getDurationSum(input []time.Duration) time.Duration {
 	d := time.Duration(0)
-	var i int64 = 0
+	for _, i := range input {
+		d += i
+	}
+
+	return d
+}
+
+func (u *Unit) getDurationAverage(input []time.Duration) time.Duration {
+	return time.Duration(int64(u.getDurationSum(input)) / int64(len(input)))
+}
+
+func (u *Unit) getDurationMedian(input []time.Duration) time.Duration {
+	var results []float64
+	for _, i := range input {
+		results = append(results, float64(i))
+	}
+
+	median, err := stats.Median(results)
+	if err != nil {
+		return 0
+	}
+
+	return time.Duration(int64(median) / int64(len(input)))
+}
+
+func (u *Unit) GetDuration(version string, ticks *bool, median *bool) (time.Duration, error) {
+	var results []time.Duration
 	for _, c := range u.t {
 		if c.Version == version {
 			if c.JUnit.Status != "passed" {
 				return 0, errors.New("-")
 			}
 
-			d = d + c.JUnit.Duration
-			i++
+			results = append(results, c.JUnit.Duration)
 		}
 	}
 
-	if *ticks && i > 0 {
-		return time.Duration(int64(d) / i), nil
+	if len(results) == 0 {
+		return 0, errors.New("-")
 	}
 
-	return d, nil
+	if *ticks {
+		if *median {
+			return u.getDurationMedian(results), nil
+		}
+
+		return u.getDurationAverage(results), nil
+	}
+
+	return u.getDurationSum(results), nil
 }
 
 func NewUnit(version string, t junit.Test) Unit {
@@ -85,6 +119,7 @@ func main() {
 	ticks := flag.Bool("ticks", false, "Time per ticks")
 	group := flag.Bool("group", false, "Groups by version")
 	major := flag.Bool("major", false, "Can only be used with a group")
+	median := flag.Bool("median", false, "Median search")
 	rotate := flag.Bool("rotate", false, "Swap versions and names")
 	directory := flag.String("path", "./build", "Specify folder path")
 	flag.Parse()
@@ -168,7 +203,7 @@ func main() {
 			values = append(values, version)
 			for _, unitKey := range unitList {
 				unit := units[unitKey]
-				if dur, err := unit.GetDuration(version, ticks); err != nil {
+				if dur, err := unit.GetDuration(version, ticks, median); err != nil {
 					values = append(values, err.Error())
 				} else {
 					values = append(values, formatDuration(dur))
@@ -186,7 +221,7 @@ func main() {
 			var values []string
 			values = append(values, unit.FullName())
 			for _, version := range versions {
-				if dur, err := unit.GetDuration(version, ticks); err != nil {
+				if dur, err := unit.GetDuration(version, ticks, median); err != nil {
 					values = append(values, err.Error())
 				} else {
 					values = append(values, formatDuration(dur))
