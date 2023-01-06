@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"flag"
+	"github.com/hashicorp/go-version"
 	"github.com/joshdk/go-junit"
 	"github.com/montanaflynn/stats"
 	"github.com/olekukonko/tablewriter"
@@ -23,16 +24,16 @@ type Unit struct {
 }
 
 type UTest struct {
-	Version string
-	JUnit   junit.Test
+	Ver   string
+	JUnit junit.Test
 }
 
 func (u *Unit) FullName() string {
 	return strings.TrimSuffix(u.Class, "Test") + ":" + strings.TrimPrefix(u.Method, "test")
 }
 
-func (u *Unit) Push(version string, t junit.Test) {
-	u.t = append(u.t, UTest{Version: version, JUnit: t})
+func (u *Unit) Push(ver string, t junit.Test) {
+	u.t = append(u.t, UTest{Ver: ver, JUnit: t})
 }
 
 func formatDuration(d time.Duration) string {
@@ -71,10 +72,10 @@ func (u *Unit) getDurationMedian(input []time.Duration) time.Duration {
 	return time.Duration(int64(median))
 }
 
-func (u *Unit) GetDuration(version string, ticks *bool, median *bool) (time.Duration, error) {
+func (u *Unit) GetDuration(ver string, ticks *bool, median *bool) (time.Duration, error) {
 	var results []time.Duration
 	for _, c := range u.t {
-		if c.Version == version {
+		if c.Ver == ver {
 			if c.JUnit.Status != "passed" {
 				return 0, errors.New("-")
 			}
@@ -98,11 +99,11 @@ func (u *Unit) GetDuration(version string, ticks *bool, median *bool) (time.Dura
 	return u.getDurationSum(results), nil
 }
 
-func NewUnit(version string, t junit.Test) Unit {
+func NewUnit(ver string, t junit.Test) Unit {
 	namespaces := strings.Split(t.Classname, ".")
 	className := namespaces[len(namespaces)-1]
 	method := strings.Fields(t.Name)[0]
-	uTest := UTest{Version: version, JUnit: t}
+	uTest := UTest{Ver: ver, JUnit: t}
 
 	return Unit{Class: className, Method: method, t: []UTest{uTest}}
 }
@@ -151,29 +152,29 @@ func main() {
 			log.Fatalf("failed to ingest JUnit xml %v", err)
 		}
 
-		var version string
+		var ver string
 
 		if *group {
 			re, _ := regexp.Compile(`\d+\.((\d+|x)(\.(\d+|x))?)`)
-			version = string(re.Find([]byte(_path)))
+			ver = string(re.Find([]byte(_path)))
 			if *major {
-				version = string(version[0]) + ".x"
+				ver = string(ver[0]) + ".x"
 			}
 		} else {
 			re := regexp.MustCompile(`junit-(.+).xml`)
-			version = re.FindStringSubmatch(_path)[1]
+			ver = re.FindStringSubmatch(_path)[1]
 		}
 
-		if _, ok := verKeys[version]; !ok {
-			versions = append(versions, version)
-			verKeys[version] = true
+		if _, ok := verKeys[ver]; !ok {
+			versions = append(versions, ver)
+			verKeys[ver] = true
 		}
 
 		for _, suite := range ingestFile {
 			for _, test := range depthSuite(suite) {
-				unit := NewUnit(version, test)
+				unit := NewUnit(ver, test)
 				if elem, ok := units[unit.FullName()]; ok {
-					elem.Push(version, test)
+					elem.Push(ver, test)
 					continue
 				}
 
@@ -188,6 +189,20 @@ func main() {
 		unitList = append(unitList, unit.FullName())
 	}
 
+	sort.Slice(versions, func(i, j int) bool {
+		v1, err := version.NewVersion(versions[i])
+		if err != nil {
+			return false
+		}
+
+		v2, err := version.NewVersion(versions[j])
+		if err != nil {
+			return false
+		}
+
+		return v1.LessThan(v2)
+	})
+
 	sort.Slice(unitList, func(i, j int) bool {
 		return unitList[i] < unitList[j]
 	})
@@ -195,15 +210,15 @@ func main() {
 	table := tablewriter.NewWriter(os.Stdout)
 
 	if *rotate {
-		columns = append(columns, "Version")
+		columns = append(columns, "Ver")
 		columns = append(columns, unitList...)
 
-		for _, version := range versions {
+		for _, ver := range versions {
 			var values []string
-			values = append(values, version)
+			values = append(values, ver)
 			for _, unitKey := range unitList {
 				unit := units[unitKey]
-				if dur, err := unit.GetDuration(version, ticks, median); err != nil {
+				if dur, err := unit.GetDuration(ver, ticks, median); err != nil {
 					values = append(values, err.Error())
 				} else {
 					values = append(values, formatDuration(dur))
@@ -220,8 +235,8 @@ func main() {
 			unit := units[unitKey]
 			var values []string
 			values = append(values, unit.FullName())
-			for _, version := range versions {
-				if dur, err := unit.GetDuration(version, ticks, median); err != nil {
+			for _, ver := range versions {
+				if dur, err := unit.GetDuration(ver, ticks, median); err != nil {
 					values = append(values, err.Error())
 				} else {
 					values = append(values, formatDuration(dur))
