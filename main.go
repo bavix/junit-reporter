@@ -158,7 +158,7 @@ func main() {
 			re, _ := regexp.Compile(`\d+\.((\d+|x)(\.(\d+|x))?)`)
 			ver = string(re.Find([]byte(_path)))
 			if *major {
-				ver = string(ver[0]) + ".x"
+				ver = strings.Split(ver, ".")[0] + ".x"
 			}
 		} else {
 			re := regexp.MustCompile(`junit-(.+).xml`)
@@ -190,14 +190,13 @@ func main() {
 	}
 
 	sort.Slice(versions, func(i, j int) bool {
-		v1, err := version.NewVersion(versions[i])
-		if err != nil {
-			return false
-		}
+		vi := strings.ReplaceAll(versions[i], "x", "0")
+		vj := strings.ReplaceAll(versions[j], "x", "0")
 
-		v2, err := version.NewVersion(versions[j])
-		if err != nil {
-			return false
+		v1, err1 := version.NewVersion(vi)
+		v2, err2 := version.NewVersion(vj)
+		if err1 != nil || err2 != nil {
+			return vi < vj
 		}
 
 		return v1.LessThan(v2)
