@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.0.17 - 2024-08-02
+
+### What's Changed
+
+* Bump bavix/.github from 0.2.3 to 0.2.4 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/junit-reporter/pull/16
+* Bump bavix/.github from 0.2.4 to 0.2.5 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/junit-reporter/pull/17
+* Bump github.com/hashicorp/go-version from 1.6.0 to 1.7.0 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/junit-reporter/pull/18
+* Bump bavix/.github from 0.2.5 to 0.3.0 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/junit-reporter/pull/19
+* Bump bavix/.github from 0.3.0 to 0.3.2 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/junit-reporter/pull/20
+* Bump bavix/.github from 0.3.2 to 0.3.3 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/junit-reporter/pull/21
+
+**Full Changelog**: https://github.com/bavix/junit-reporter/compare/0.0.16...0.0.17
+
 ## 0.0.16 - 2024-02-20
 
 ### What's Changed
