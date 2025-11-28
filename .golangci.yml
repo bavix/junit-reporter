@@ -1,0 +1,57 @@
+version: "2"
+run:
+  go: "1.25"
+linters:
+  default: all
+  disable:
+    - wsl
+    - testpackage
+  enable:
+    - wsl_v5
+  settings:
+    depguard:
+      rules:
+        main:
+          allow:
+            - $gostd
+            - github.com
+    lll:
+      line-length: 140
+    wsl_v5:
+      allow-first-in-block: true
+      allow-whole-block: false
+      branch-max-lines: 2
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - dupl
+          - gochecknoglobals
+        path: (.+)_test.go
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - gofumpt
+    - goimports
+  settings:
+    gci:
+      sections:
+        - Standard
+        - Default
+        - Prefix(github.com/bavix)
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
