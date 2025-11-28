@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.1.0 - 2025-11-28
+
+### What's Changed
+
+* Bump bavix/.github from 0.3.3 to 0.4.0 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/junit-reporter/pull/29
+* Bump bavix/.github/.github/workflows/go-release-binary.yml from 0.4.0 to 0.4.1 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/junit-reporter/pull/32
+* Bump bavix/.github/.github/workflows/changelog.yml from 0.4.0 to 0.4.1 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/junit-reporter/pull/33
+* Update dependencies and refactor main functionality by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/junit-reporter/pull/34
+
+### New Contributors
+
+* [@rez1dent3](https://github.com/rez1dent3) made their first contribution in https://github.com/bavix/junit-reporter/pull/34
+
+**Full Changelog**: https://github.com/bavix/junit-reporter/compare/0.0.17...v0.1.0
+
 ## 0.0.17 - 2024-08-02
 
 ### What's Changed
