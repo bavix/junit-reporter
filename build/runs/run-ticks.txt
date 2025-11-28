@@ -1,0 +1,16 @@
+|            Name            | 6.0.4  | 6.1.0  | 6.2.4-8-array | 6.2.4  | 7.0.0  | 7.1.0  | 7.2.0  | 7.3.0-beta1 | 10.0.0-beta1 |
+|----------------------------|--------|--------|---------------|--------|--------|--------|--------|-------------|--------------|
+| Cart:EagerLoaderPay        | -      | -      | -             | -      | 8.47s  | 10.4s  | -      | -           | -            |
+| Cart:Pay                   | 1.19s  | 1.17s  | 1.19s         | 1.93s  | 628ms  | 689ms  | 1.07s  | 1.09s       | 1.09s        |
+| Cart:PayFree               | 1.47s  | 1.46s  | 1.47s         | 2.13s  | 439ms  | 428ms  | 1.01s  | 1.01s       | 1.01s        |
+| Cart:PayOneItemXPieces     | -      | -      | -             | -      | 190ms  | 332ms  | -      | -           | -            |
+| Gift:Gift                  | -      | -      | -             | -      | 19.6ms | 17.2ms | -      | -           | -            |
+| Gift:Refund                | -      | -      | -             | -      | 36.9ms | 32.8ms | -      | -           | -            |
+| Solo:Deposit               | 25.1ms | 25.2ms | 25.1ms        | 26.8ms | 12.7ms | 16.5ms | 26.2ms | 27.6ms      | 27.6ms       |
+| Solo:EagerLoading          | -      | -      | -             | -      | 188ms  | 265ms  | -      | -           | -            |
+| Solo:ForceWithdraw         | 25.3ms | 25.3ms | 25.3ms        | 26.8ms | 20.9ms | 14.5ms | 26.2ms | 27.3ms      | 27.3ms       |
+| Solo:GetBalance            | 17.5ms | 17.5ms | 17.5ms        | 18.7ms | 14ms   | 12.1ms | 18.5ms | 19.9ms      | 19.9ms       |
+| Solo:Transfer              | 49.9ms | 48.6ms | 49.9ms        | 50.8ms | 18.7ms | 18.3ms | 47.7ms | 49.4ms      | 49.4ms       |
+| State:InTransaction        | 1.29s  | 1.29s  | 1.29s         | 1.33s  | 208ms  | 153ms  | 698ms  | 713ms       | 713ms        |
+| State:RefreshInTransaction | -      | -      | -             | -      | -      | 17.9ms | -      | -           | -            |
+| State:TransactionRollback  | -      | -      | -             | -      | -      | 16.1ms | -      | -           | -            |

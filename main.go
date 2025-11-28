@@ -1,120 +1,16 @@
 package main
 
 import (
-	"errors"
+	"bytes"
 	"flag"
-	"github.com/hashicorp/go-version"
-	"github.com/joshdk/go-junit"
-	"github.com/montanaflynn/stats"
-	"github.com/olekukonko/tablewriter"
-	"path"
-	"regexp"
-	"sort"
-	"time"
-
+	"fmt"
 	"log"
 	"os"
-	"strings"
+
+	"github.com/bavix/junit-reporter/internal/reporter"
 )
 
-type Unit struct {
-	Class  string
-	Method string
-	t      []UTest
-}
-
-type UTest struct {
-	Ver   string
-	JUnit junit.Test
-}
-
-func (u *Unit) FullName() string {
-	return strings.TrimSuffix(u.Class, "Test") + ":" + strings.TrimPrefix(u.Method, "test")
-}
-
-func (u *Unit) Push(ver string, t junit.Test) {
-	u.t = append(u.t, UTest{Ver: ver, JUnit: t})
-}
-
-func formatDuration(d time.Duration) string {
-	scale := 100 * time.Second
-	for scale > d {
-		scale = scale / 10
-	}
-
-	return d.Round(scale / 100).String()
-}
-
-func (u *Unit) getDurationSum(input []time.Duration) time.Duration {
-	d := time.Duration(0)
-	for _, i := range input {
-		d += i
-	}
-
-	return d
-}
-
-func (u *Unit) getDurationAverage(input []time.Duration) time.Duration {
-	return time.Duration(int64(u.getDurationSum(input)) / int64(len(input)))
-}
-
-func (u *Unit) getDurationMedian(input []time.Duration) time.Duration {
-	var results []float64
-	for _, i := range input {
-		results = append(results, float64(i))
-	}
-
-	median, err := stats.Median(results)
-	if err != nil {
-		return 0
-	}
-
-	return time.Duration(int64(median))
-}
-
-func (u *Unit) GetDuration(ver string, ticks *bool, median *bool) (time.Duration, error) {
-	var results []time.Duration
-	for _, c := range u.t {
-		if c.Ver == ver {
-			if c.JUnit.Status != "passed" {
-				return 0, errors.New("-")
-			}
-
-			results = append(results, c.JUnit.Duration)
-		}
-	}
-
-	if len(results) == 0 {
-		return 0, errors.New("-")
-	}
-
-	if *ticks {
-		if *median {
-			return u.getDurationMedian(results), nil
-		}
-
-		return u.getDurationAverage(results), nil
-	}
-
-	return u.getDurationSum(results), nil
-}
-
-func NewUnit(ver string, t junit.Test) Unit {
-	namespaces := strings.Split(t.Classname, ".")
-	className := namespaces[len(namespaces)-1]
-	method := strings.Fields(t.Name)[0]
-	uTest := UTest{Ver: ver, JUnit: t}
-
-	return Unit{Class: className, Method: method, t: []UTest{uTest}}
-}
-
-func depthSuite(suite junit.Suite) []junit.Test {
-	tests := suite.Tests
-	for _, one := range suite.Suites {
-		tests = append(tests, depthSuite(one)...)
-	}
-	return tests
-}
+const baselinePerm = 0o600
 
 func main() {
 	ticks := flag.Bool("ticks", false, "Time per ticks")
@@ -123,134 +19,117 @@ func main() {
 	median := flag.Bool("median", false, "Median search")
 	rotate := flag.Bool("rotate", false, "Swap versions and names")
 	directory := flag.String("path", "./build", "Specify folder path")
+	compare := flag.String("compare", "", "Path to baseline file to compare output against")
+	generate := flag.String("generate-baseline", "", "Write current output to given file path and exit")
+
 	flag.Parse()
 
-	var filenames []string
+	opts := reporter.Options{
+		Directory:    *directory,
+		Ticks:        *ticks,
+		Group:        *group,
+		Major:        *major,
+		Median:       *median,
+		Rotate:       *rotate,
+		OutputFormat: "",
+		OutputFile:   "",
+	}
 
-	files, err := os.ReadDir(*directory)
+	const exitCodeMismatch = 2
+
+	handled, err := handleCompareGenerate(*compare, *generate, opts, exitCodeMismatch)
 	if err != nil {
 		log.Fatalln(err)
 	}
 
-	for _, info := range files {
-		if info.Type().IsRegular() && strings.HasSuffix(info.Name(), ".xml") && strings.HasPrefix(info.Name(), "junit-") {
-			filenames = append(filenames, path.Join(*directory, info.Name()))
-		}
+	if handled {
+		return
 	}
 
-	if len(filenames) == 0 {
-		log.Fatalln("Files not found")
+	err = reporter.Run(os.Stdout, opts)
+	if err != nil {
+		log.Fatalln(err)
 	}
+}
 
-	units := map[string]*Unit{}
-	verKeys := map[string]bool{}
-	var versions []string
-
-	for _, _path := range filenames {
-		ingestFile, err := junit.IngestFile(_path)
+func handleCompareGenerate(compare, generate string, opts reporter.Options, exitCode int) (bool, error) {
+	if generate != "" {
+		out, err := runToBytes(opts)
 		if err != nil {
-			log.Fatalf("failed to ingest JUnit xml %v", err)
+			return true, err
 		}
 
-		var ver string
-
-		if *group {
-			re, _ := regexp.Compile(`\d+\.((\d+|x)(\.(\d+|x))?)`)
-			ver = string(re.Find([]byte(_path)))
-			if *major {
-				ver = strings.Split(ver, ".")[0] + ".x"
-			}
-		} else {
-			re := regexp.MustCompile(`junit-(.+).xml`)
-			ver = re.FindStringSubmatch(_path)[1]
+		err = writeBaseline(generate, out)
+		if err != nil {
+			return true, err
 		}
 
-		if _, ok := verKeys[ver]; !ok {
-			versions = append(versions, ver)
-			verKeys[ver] = true
-		}
+		fmt.Fprintln(os.Stdout, "wrote baseline:", generate)
 
-		for _, suite := range ingestFile {
-			for _, test := range depthSuite(suite) {
-				unit := NewUnit(ver, test)
-				if elem, ok := units[unit.FullName()]; ok {
-					elem.Push(ver, test)
-					continue
-				}
-
-				units[unit.FullName()] = &unit
-			}
-		}
+		return true, nil
 	}
 
-	var columns []string
-	var unitList []string
-	for _, unit := range units {
-		unitList = append(unitList, unit.FullName())
+	if compare != "" {
+		out, err := runToBytes(opts)
+		if err != nil {
+			return true, err
+		}
+
+		var match bool
+
+		match, err = compareBaseline(compare, out)
+		if err != nil {
+			return true, err
+		}
+
+		if match {
+			fmt.Fprintln(os.Stdout, "OK: output matches baseline")
+
+			return true, nil
+		}
+
+		os.Exit(exitCode)
 	}
 
-	sort.Slice(versions, func(i, j int) bool {
-		vi := strings.ReplaceAll(versions[i], "x", "0")
-		vj := strings.ReplaceAll(versions[j], "x", "0")
+	return false, nil
+}
 
-		v1, err1 := version.NewVersion(vi)
-		v2, err2 := version.NewVersion(vj)
-		if err1 != nil || err2 != nil {
-			return vi < vj
-		}
+func runToBytes(opts reporter.Options) ([]byte, error) {
+	var buf bytes.Buffer
 
-		return v1.LessThan(v2)
-	})
-
-	sort.Slice(unitList, func(i, j int) bool {
-		return unitList[i] < unitList[j]
-	})
-
-	table := tablewriter.NewWriter(os.Stdout)
-
-	if *rotate {
-		columns = append(columns, "Ver")
-		columns = append(columns, unitList...)
-
-		for _, ver := range versions {
-			var values []string
-			values = append(values, ver)
-			for _, unitKey := range unitList {
-				unit := units[unitKey]
-				if dur, err := unit.GetDuration(ver, ticks, median); err != nil {
-					values = append(values, err.Error())
-				} else {
-					values = append(values, formatDuration(dur))
-				}
-			}
-
-			table.Append(values)
-		}
-	} else {
-		columns = append(columns, "Name")
-		columns = append(columns, versions...)
-
-		for _, unitKey := range unitList {
-			unit := units[unitKey]
-			var values []string
-			values = append(values, unit.FullName())
-			for _, ver := range versions {
-				if dur, err := unit.GetDuration(ver, ticks, median); err != nil {
-					values = append(values, err.Error())
-				} else {
-					values = append(values, formatDuration(dur))
-				}
-			}
-
-			table.Append(values)
-		}
+	err := reporter.Run(&buf, opts)
+	if err != nil {
+		return nil, fmt.Errorf("run reporter: %w", err)
 	}
 
-	table.SetBorders(tablewriter.Border{Left: true, Top: false, Right: true, Bottom: false})
-	table.SetAutoFormatHeaders(false)
-	table.SetAutoWrapText(false)
-	table.SetCenterSeparator("|")
-	table.SetHeader(columns)
+	return bytes.TrimSpace(buf.Bytes()), nil
+}
 
-	table.Render()
+func writeBaseline(path string, out []byte) error {
+	err := os.WriteFile(path, append(out, '\n'), baselinePerm)
+	if err != nil {
+		return fmt.Errorf("write baseline: %w", err)
+	}
+
+	return nil
+}
+
+func compareBaseline(path string, out []byte) (bool, error) {
+	wantBytes, err := os.ReadFile(path)
+	if err != nil {
+		return false, fmt.Errorf("read baseline: %w", err)
+	}
+
+	want := bytes.TrimSpace(wantBytes)
+	if bytes.Equal(want, out) {
+		return true, nil
+	}
+
+	fmt.Fprintln(os.Stderr, "output mismatch vs baseline:", path)
+	fmt.Fprintln(os.Stderr, "---- baseline ----")
+	fmt.Fprintln(os.Stderr, string(want))
+	fmt.Fprintln(os.Stderr, "---- got ----")
+	fmt.Fprintln(os.Stderr, string(out))
+
+	return false, nil
 }
