@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.1.1 - 2026-03-11
+
+### What's Changed
+
+* Bump actions/checkout from 5 to 6 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/junit-reporter/pull/35
+* Bump github.com/olekukonko/tablewriter from 1.1.1 to 1.1.3 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/junit-reporter/pull/37
+
+**Full Changelog**: https://github.com/bavix/junit-reporter/compare/v0.1.0...v0.1.1
+
 ## v0.1.0 - 2025-11-28
 
 ### What's Changed
