@@ -5,7 +5,7 @@ go 1.25
 require (
 	github.com/hashicorp/go-version v1.9.0
 	github.com/joshdk/go-junit v1.0.0
-	github.com/montanaflynn/stats v0.9.0
+	github.com/montanaflynn/stats v0.11.0
 	github.com/olekukonko/tablewriter v1.1.4
 )
 
